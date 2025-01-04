@@ -51,7 +51,8 @@ print(f"\nAccuracy: {accuracy:.2f}")
 
 # Precision
 precision_high = precision_score(test_Y, decoded_predictions, pos_label='high')
-print(f"Precision (high): {precision_high:.2f}")
+print(f""
+      f"Precision (high): {precision_high:.2f}")
 precision_low = precision_score(test_Y, decoded_predictions, pos_label='low')
 print(f"Precision (low): {precision_low:.2f}")
 
