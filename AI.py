@@ -5,10 +5,12 @@ import time
 # defining initial state
 
 initial_bays = [[(3, "heavy"), ], [(1, "light"), (6, "light"),], [], [(4, "light"),  (2, "heavy"), (5, "light")], [], []]
-initial_crane_position = 0
+initial_crane_position = 5
 initial_crane_container_held = 0
 initial_cost = 0
 
+''' initial state tuple composed ot state at [0] and cost at [1]
+    to access elements of state we'll use state[0][index of element needed]'''
 initial_state = ([initial_bays, initial_crane_position, initial_crane_container_held], 0)
 
 
@@ -67,6 +69,14 @@ def perform_action(state, action):
     return new_state, new_state_cost + cost
 
 
+# use to validate the agent's action
+def is_action_valid(state, action):
+    if perform_action(state, action):
+        return True
+    else:
+        return False
+
+
 def perform_action_sequence(state, actions):
     new_state = state
     for action in actions:
@@ -81,33 +91,10 @@ def perform_action_sequence(state, actions):
     return new_state
 
 
-def is_goal_state(state):
-    bays, crane_position, crane_container_held = state[0]
-
-    # Iterate through the bays
-    for i, bay in enumerate(bays):
-        # Check if this bay contains containers 1, 2, and 3 in order
-        if [container[0] for container in bay] == [1, 2, 3]:
-            # Check if the crane is not in the same bay
-            if crane_position != i:
-                return True
-
-    # If we haven't returned True by now, it's not a goal state
-    return False
-
-
-all_actions = ["DROP", "PICK", "LEFT", "RIGHT"]
-
-
-# use to validate the agent's action
-def is_action_valid(state, action):
-    if perform_action(state, action):
-        return True
-    else:
-        return False
-
-
 def heuristic_function(previous_state, current_state):
+    """ NOTE: we are generally decreasing estimation when state is believed to be optimal
+        and increasing estimation when state is believed to not be optimal"""
+
     estimated_cost = 0
     # Initialize the dictionary to store bay indices for containers 1, 2, and 3
     current_bay_indices = {1: None, 2: None, 3: None}
@@ -140,37 +127,44 @@ def heuristic_function(previous_state, current_state):
 
     if current_bay_index_1 is not None:
         bay_at_index_1 = current_state[0][0][current_bay_index_1]
-
+        # iterate through containers at 1's location
         for idx, container in enumerate(bay_at_index_1):
-            # check if container 1 is not the lowest (increase cost)
             if container[0] == 1:
+                # increase estimation if 1 is not lowest
                 if idx > 0:
                     estimated_cost += 1
+                # decrease estimation if 1 is lowest
                 elif idx == 0:
-                    estimated_cost -= 2
-                # check how many containers are on top of 1 that are not 2 (increase cost)
+                    estimated_cost -= 1
+                # increase estimation by num of containers above 1 if not 2
                 if idx + 1 < len(bay_at_index_1):
                     if not bay_at_index_1[idx + 1][0] == 2:
                         estimated_cost += len(bay_at_index_1) - idx - 1
+        # decrease cost if crane is holding cont 1 above an empty bay (good path to explore)
         if current_state[0][2] != 0 and current_state[0][2][0] == 1 and current_state[0][1] == current_bay_index_1 \
                 and len(bay_at_index_1) == 0:
             estimated_cost -= 2
 
+    # check current explored state against previous state
     if previous_bay_index_1 is not None:
+        # assign previous 1's bay
         bay_at_index_1 = previous_state[0][0][previous_bay_index_1]
         containers_above_1 = []
-        # check if container 1 is picked up when it was in wrong position (decrease) when in correct position (increase)
+        # find index of 1 in previous state
         for idx, container in enumerate(bay_at_index_1):
             if container[0] == 1:
+                # assign all containers above 1 for use later
                 containers_above_1 = bay_at_index_1[idx + 1:]
+                ''' if container 1 is currently in crane, 
+                    assigns estimation according to position of 1 in the previous state'''
                 if current_state[0][2] != 0 and current_state[0][2][0] == 1:
                     if idx > 0:
                         estimated_cost -= 2
                     else:
                         estimated_cost += 2
-        # check if trying to pick up a container that was previously bocking 1 (decrease cost)
+        # if container picked up by crane was previously on 1 decrease cost
         if current_state[0][2] != 0:
-            crane_container = current_state[0][2]  # Container in the crane
+            crane_container = current_state[0][2]
             for container in containers_above_1:
                 if container == crane_container:
                     estimated_cost -= 2
@@ -179,6 +173,11 @@ def heuristic_function(previous_state, current_state):
     current_bay_index_2 = current_bay_indices[2]
     previous_bay_index_2 = previous_bay_indices[2]
     if current_bay_index_2 is not None:
+        ''' default checks are:
+            - distance to container 1
+            - if in same location as container 1:
+                - if correctly above 1
+                - num of containers above it'''
         # check distance to container 1
         estimated_cost += abs(current_bay_index_2 - current_bay_index_1)
         bay_at_index_2 = current_state[0][0][current_bay_index_2]
@@ -189,21 +188,27 @@ def heuristic_function(previous_state, current_state):
                     estimated_cost += 1
                     estimated_cost += len(bay_at_index_2) - idx - 1
 
+    # check current explored state against previous state
     if previous_bay_index_2 is not None:
-        # checks if the crane picked up container 3
+        ''' if container 2 was picked up checks against two scenarios:
+            - cont 2 was in same bay as cont 1
+            - cont 2 was not in same bay as cont 1'''
         if current_state[0][2] != 0 and current_state[0][2][0] == 2:
             # checks if container 2 was in same bay as 1
             if previous_bay_index_2 == current_bay_index_1:
                 bay_at_index_1 = previous_state[0][0][previous_bay_index_1]
                 for idx, container in enumerate(bay_at_index_1):
                     if container[0] == 1:
-                        # if container 1 was at the right position increase cost
+                        # if container 1 was at the right position and container 2 was on top of it increase estimation
                         if idx == 0 and idx + 1 < len(bay_at_index_1) and bay_at_index_1[idx + 1][0] == 2:
                             estimated_cost += 2
-                        # if container 1 was in the wrong position increase cost
-                        elif idx > 0 and idx + 1 < len(bay_at_index_1) and bay_at_index_1[idx + 1][0] != 2:
+                        # if container 1 was at the right position but container 2 was not on top of it decrease estimation
+                        elif idx == 0 and idx + 1 < len(bay_at_index_1) and bay_at_index_1[idx + 1][0] != 2:
                             estimated_cost -= 2
-                # checks if container 2 was not above 1
+                        # if container 1 was in the wrong position decrease cost
+                        elif idx > 0:
+                            estimated_cost -= 2
+            # if container 2 was not on top of 1 decrease estimation
             elif previous_bay_index_2 != current_bay_index_1:
                 estimated_cost -= 2
 
@@ -211,6 +216,11 @@ def heuristic_function(previous_state, current_state):
     current_bay_index_3 = current_bay_indices[3]
     previous_bay_index_3 = previous_bay_indices[3]
     if current_bay_index_3 is not None:
+        ''' default checks are:
+                    - distance to container 1
+                    - if in same location as container 1:
+                        - if correctly above 2 and 1
+                        - num of containers above it'''
         # check distance to container 1
         estimated_cost += abs(current_bay_index_3 - current_bay_index_1)
         bay_at_index_3 = current_state[0][0][current_bay_index_3]
@@ -223,26 +233,57 @@ def heuristic_function(previous_state, current_state):
                     estimated_cost += len(bay_at_index_3) - idx - 1
 
     if previous_bay_index_3 is not None:
+        ''' if container 3 was picked up checks against two scenarios:
+                - cont 3 was in same bay as cont 1 and 2
+                - cont 3 was not in same bay as cont 1 or 2'''
         # checks if the crane picked up container 3
         if current_state[0][2] != 0 and current_state[0][2][0] == 3:
-            # checks if container 3 was above 2
+            # checks if container 3 in same bay as 1 and 2
             if previous_bay_index_3 == current_bay_index_1 == current_bay_index_2:
                 bay_at_index_1 = previous_state[0][0][current_bay_index_1]
                 for idx, container in enumerate(bay_at_index_1):
                     if container[0] == 1:
-                        # if container 1 was at the right position increase cost
+                        # if container 1 was and cont 2 and 3 were stacked above it increase cost
                         if idx == 0 and idx + 1 < len(bay_at_index_1) and bay_at_index_1[idx + 1][0] == 2 and idx + 2 < len(bay_at_index_1) and bay_at_index_1[idx + 2][0] == 3:
                             estimated_cost += 2
-                        # if container 1 was in the wrong position decrease cost
+                        # if container 1 was in the wrong position cont 2 and 1 were not below 3 decrease cost
                         elif idx > 0 or (idx + 1 < len(bay_at_index_1) and bay_at_index_1[idx + 1][0] != 2) or (idx + 2 < len(bay_at_index_1) and bay_at_index_1[idx + 2][0] != 3):
                             estimated_cost -= 2
             # checks if container 3 was not in same bay as 1 2
-            elif previous_bay_index_3 != current_bay_index_1 and previous_bay_index_3 != current_bay_index_2:
-                estimated_cost += 2
+            elif previous_bay_index_3 != current_bay_index_1 or previous_bay_index_3 != current_bay_index_2:
+                estimated_cost -= 2
     return estimated_cost
 
 
+all_actions = ["DROP", "PICK", "LEFT", "RIGHT"]
+
+def is_goal_state(state):
+    bays, crane_position, crane_container_held = state[0]
+
+    # Iterate through the bays
+    for i, bay in enumerate(bays):
+        # Check if this bay contains containers 1, 2, and 3 in order
+        if [container[0] for container in bay] == [1, 2, 3]:
+            # Check if the crane is not in the same bay
+            if crane_position != i:
+                return True
+
+    # If we haven't returned True by now, it's not a goal state
+    return False
+
+
 def astar(initial_state, possible_actions=all_actions):
+
+    """ A* algorithm will:
+     1) hash the states in te frontier (for comparison purposes)
+     2) pop state with lowest f from frontier
+     3) flag the popped state as explored
+     4) check if the goal state is reached
+     5) apply actions to the state
+     6) if any new state derived for the actions has already been explored, skip to next
+     7) hash the new state
+     8) add it to the frontier"""
+
     frontier = {}  # store states to be explored
     explored_states = []  # store states already explored
 
