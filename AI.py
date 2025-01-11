@@ -49,9 +49,9 @@ def perform_action(state, action):
 
         if new_state[2] == 0:  # If no container is held
             return None
-        if len(new_state[0][new_state[1]]) >= 4:  # Check if the current bay has already 4 containers
+        if len([new_state[1]]) >= 4:  # Check if the current bay has already 4 containers
             return None
-        cost = 5 - len(new_state[0][new_state[1]])  # cost based on num of containers before drop off
+        cost = 5 - len([new_state[1]])  # cost based on num of containers before drop off
         container = new_state[2]
         new_state[2] = 0  # Drop the container
         new_state[0][new_state[1]].append(container)  # Add the container to the current bay
@@ -60,7 +60,7 @@ def perform_action(state, action):
             return None
         if len(new_state[0][new_state[1]]) == 0:  # If no containers in the current bay
             return None
-        cost = 5 - len(new_state[0][new_state[1]])  # cost based on num of containers before pick up
+        cost = 5 - len([new_state[1]])  # cost based on num of containers before pick up
         container = new_state[0][new_state[1]].pop()  # Pick up the top container
         new_state[2] = container
     else:
