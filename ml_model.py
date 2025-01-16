@@ -29,6 +29,7 @@ test_Y = test[target].to_numpy()
 
 train_Y_encoded = encoder.fit_transform(train_Y.ravel())
 test_Y_encoded = encoder.transform(test_Y.ravel())
+
 # instantiating the ml model
 LR_model = LogisticRegression()
 
@@ -37,6 +38,7 @@ LR_model.fit(train_X, train_Y_encoded)
 predictions = LR_model.predict(test_X)
 
 decoded_predictions = encoder.inverse_transform(predictions)
+
 
 for i in range(min(20, len(train_Y), len(decoded_predictions))):
     print(f"Actual value {i}: {train_Y[i][0]}\nPredicted value {i}: {decoded_predictions[i]}")
@@ -47,7 +49,6 @@ print(f"\nAccuracy: {accuracy:.2f}")
 
 # the following metrics are used to offer more insights than accuracy alone, they are performed on both "high" and "low"
 # this metrics (along with accuracy) work on a % basis, so the closer to 1, or 100% (>0.75 being acceptable) the better
-
 
 # Precision
 precision_high = precision_score(test_Y, decoded_predictions, pos_label='high')

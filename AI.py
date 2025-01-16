@@ -255,8 +255,6 @@ def heuristic_function(previous_state, current_state):
     return estimated_cost
 
 
-all_actions = ["DROP", "PICK", "LEFT", "RIGHT"]
-
 def is_goal_state(state):
     bays, crane_position, crane_container_held = state[0]
 
@@ -272,10 +270,10 @@ def is_goal_state(state):
     return False
 
 
-def astar(initial_state, possible_actions=all_actions):
+def astar(initial_state, possible_actions=["DROP", "PICK", "LEFT", "RIGHT"]):
 
     """ A* algorithm will:
-     1) hash the states in te frontier (for comparison purposes)
+     1) hash the states in the frontier (for comparison purposes)
      2) pop state with lowest f from frontier
      3) flag the popped state as explored
      4) check if the goal state is reached
